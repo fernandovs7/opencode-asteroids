@@ -63,21 +63,31 @@ const SPEEDS = [0, 85, 55, 32];   // velocidad base por tamaño
 const POINTS = [0, 100, 50, 20];  // puntos por tamaño
 
 class Asteroid {
-  constructor(x, y, size = 3) {
+  constructor(x, y, size = 3, shootingStar = false) {
     this.x    = x;
     this.y    = y;
     this.size = size;
     this.radius = RADII[size];
     this.dead = false;
 
+    this.isShootingStar = shootingStar;
+    this.ttl = shootingStar ? 6 : null;
+    this.maxTtl = this.ttl;
+
+    if (shootingStar) {
+      this.radius = 14;
+      this.cometRadius = 22;
+    }
+
     const angle = rand(0, Math.PI * 2);
-    const speed = SPEEDS[size] + rand(-15, 15);
+    const baseSpeed = SPEEDS[size] + rand(-15, 15);
+    const speed = shootingStar ? baseSpeed * 2.5 : baseSpeed;
     this.vx = Math.cos(angle) * speed;
     this.vy = Math.sin(angle) * speed;
     this.rotSpeed = rand(-1.2, 1.2);
     this.rot = rand(0, Math.PI * 2);
 
-    // Polígono irregular
+    // Polígono irregular (solo asteroides normales)
     const n = randInt(8, 13);
     this.verts = [];
     for (let i = 0; i < n; i++) {
@@ -91,6 +101,11 @@ class Asteroid {
     this.x   = wrap(this.x + this.vx * dt, W);
     this.y   = wrap(this.y + this.vy * dt, H);
     this.rot += this.rotSpeed * dt;
+
+    if (this.isShootingStar) {
+      this.ttl -= dt;
+      if (this.ttl <= 0) this.dead = true;
+    }
   }
 
   split() {
@@ -102,19 +117,68 @@ class Asteroid {
   }
 
   draw() {
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.rotate(this.rot);
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth   = 1.5;
-    ctx.lineJoin    = 'round';
-    ctx.beginPath();
-    ctx.moveTo(this.verts[0][0], this.verts[0][1]);
-    for (let i = 1; i < this.verts.length; i++)
-      ctx.lineTo(this.verts[i][0], this.verts[i][1]);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.restore();
+    if (this.isShootingStar) {
+      const fadeStart = this.maxTtl * 0.3;
+      const alpha = Math.min(1, this.ttl / fadeStart);
+      const angle = Math.atan2(this.vy, this.vx);
+      const trailLen = 50;
+
+      // Estela con degradado
+      const grad = ctx.createLinearGradient(
+        this.x, this.y,
+        this.x - Math.cos(angle) * trailLen,
+        this.y - Math.sin(angle) * trailLen
+      );
+      grad.addColorStop(0, `rgba(255, 220, 120, ${(alpha * 0.8).toFixed(2)})`);
+      grad.addColorStop(1, 'rgba(255, 160, 40, 0)');
+
+      ctx.save();
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(
+        this.x - Math.cos(angle) * trailLen,
+        this.y - Math.sin(angle) * trailLen
+      );
+      ctx.stroke();
+
+      // Brillo suave
+      const glow = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.cometRadius);
+      glow.addColorStop(0, `rgba(255, 240, 180, ${(alpha * 0.5).toFixed(2)})`);
+      glow.addColorStop(0.5, `rgba(255, 200, 80, ${(alpha * 0.15).toFixed(2)})`);
+      glow.addColorStop(1, 'rgba(255, 160, 40, 0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.cometRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Núcleo compacto
+      const coreGrad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
+      coreGrad.addColorStop(0, `rgba(255, 255, 240, ${alpha.toFixed(2)})`);
+      coreGrad.addColorStop(0.6, `rgba(255, 220, 100, ${alpha.toFixed(2)})`);
+      coreGrad.addColorStop(1, `rgba(255, 160, 40, ${(alpha * 0.3).toFixed(2)})`);
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.rot);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth   = 1.5;
+      ctx.lineJoin    = 'round';
+      ctx.beginPath();
+      ctx.moveTo(this.verts[0][0], this.verts[0][1]);
+      for (let i = 1; i < this.verts.length; i++)
+        ctx.lineTo(this.verts[i][0], this.verts[i][1]);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 }
 
@@ -287,7 +351,8 @@ function spawnAsteroids(count) {
       x = rand(0, W);
       y = rand(0, H);
     } while (Math.hypot(x - W / 2, y - H / 2) < SAFE_DIST);
-    asteroids.push(new Asteroid(x, y, 3));
+    const shootingStar = Math.random() < 0.2;
+    asteroids.push(new Asteroid(x, y, 3, shootingStar));
   }
 }
 
@@ -345,6 +410,7 @@ function update(dt) {
     particles.forEach(p => p.update(dt));
     particles = particles.filter(p => !p.dead);
     asteroids.forEach(a => a.update(dt));
+    asteroids = asteroids.filter(a => !a.dead);
     if (deadTimer <= 0) { state = 'playing'; ship.reset(); }
     return;
   }
