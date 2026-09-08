@@ -44,3 +44,4 @@ Luego visita `http://localhost:3000`.
 - Asteroides se parten en fragmentos más pequeños al ser destruidos
 - Partículas de explosión al destruir asteroides
 - Power-up Velocidad: 20% de probabilidad al destruir un asteroide; duplica el desplazamiento de la nave durante 5 segundos
+- Power-up Escudo: 20% de probabilidad al destruir un asteroide; protege la nave durante 5 segundos y destruye los asteroides que la impactan sin sumar puntos
