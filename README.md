@@ -29,6 +29,7 @@ Luego visita `http://localhost:3000`.
 | `←` `→`   | Rotar nave |
 | `↑`       | Propulsar  |
 | `Espacio` | Disparar   |
+| `S`       | Cambiar skin de la nave |
 
 ## Puntuación
 
@@ -44,3 +45,5 @@ Luego visita `http://localhost:3000`.
 - Asteroides se parten en fragmentos más pequeños al ser destruidos
 - Partículas de explosión al destruir asteroides
 - Power-up Velocidad: 20% de probabilidad al destruir un asteroide; duplica el desplazamiento de la nave durante 5 segundos
+- Tres skins de nave seleccionables: Clásica, Interceptor y Fénix
+- La skin seleccionada se conserva al recargar la página
