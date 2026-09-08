@@ -29,6 +29,7 @@ Luego visita `http://localhost:3000`.
 | `←` `→`   | Rotar nave |
 | `↑`       | Propulsar  |
 | `Espacio` | Disparar   |
+| `S`       | Cambiar skin de la nave |
 
 ## Puntuación
 
@@ -43,5 +44,7 @@ Luego visita `http://localhost:3000`.
 - 3 vidas con invencibilidad temporal al reaparecer (parpadeo)
 - Asteroides se parten en fragmentos más pequeños al ser destruidos
 - Partículas de explosión al destruir asteroides
-- Power-up Velocidad: 20% de probabilidad al destruir un asteroide; duplica el desplazamiento de la nave durante 5 segundos
-- Power-up Escudo: 20% de probabilidad al destruir un asteroide; protege la nave durante 5 segundos y destruye los asteroides que la impactan sin sumar puntos
+- Power-ups: 20% de probabilidad total al destruir un asteroide, repartida entre Velocidad, Escudo y Triple Shot
+- Velocidad duplica el desplazamiento, Escudo protege y destruye asteroides al impacto, y Triple Shot dispara tres proyectiles durante 5 segundos
+- Tres skins de nave seleccionables: Clásica, Interceptor y Fénix
+- La skin seleccionada se conserva al recargar la página
