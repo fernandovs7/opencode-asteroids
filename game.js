@@ -37,6 +37,8 @@ const SHIP_SKINS = [
     name: 'CLÁSICA',
     color: '#fff',
     thrustColor: '#ff8200',
+    scale: 1,
+    scoreMultiplier: 1,
     drawHull() {
       ctx.beginPath();
       ctx.moveTo(20, 0);
@@ -59,6 +61,8 @@ const SHIP_SKINS = [
     name: 'INTERCEPTOR',
     color: '#35d8ff',
     thrustColor: '#8af4ff',
+    scale: 1,
+    scoreMultiplier: 1,
     drawHull() {
       ctx.beginPath();
       ctx.moveTo(20, 0);
@@ -85,6 +89,41 @@ const SHIP_SKINS = [
     name: 'FÉNIX',
     color: '#ff654a',
     thrustColor: '#ffd166',
+    scale: 1,
+    scoreMultiplier: 1,
+    drawHull() {
+      ctx.beginPath();
+      ctx.moveTo(20, 0);
+      ctx.lineTo(3, -5);
+      ctx.lineTo(-9, -12);
+      ctx.lineTo(-6, -4);
+      ctx.lineTo(-13, -6);
+      ctx.lineTo(-9, 0);
+      ctx.lineTo(-13, 6);
+      ctx.lineTo(-6, 4);
+      ctx.lineTo(-9, 12);
+      ctx.lineTo(3, 5);
+      ctx.closePath();
+      ctx.stroke();
+    },
+    drawThrust() {
+      ctx.beginPath();
+      ctx.moveTo(-7, -4);
+      ctx.lineTo(-9 - rand(5, 12), -3);
+      ctx.lineTo(-8, -1.5);
+      ctx.moveTo(-8, 1.5);
+      ctx.lineTo(-9 - rand(5, 12), 3);
+      ctx.lineTo(-7, 4);
+      ctx.stroke();
+    },
+  },
+  {
+    id: 'colossus',
+    name: 'COLOSO',
+    color: '#b45cff',
+    thrustColor: '#e0b0ff',
+    scale: 2,
+    scoreMultiplier: 2,
     drawHull() {
       ctx.beginPath();
       ctx.moveTo(20, 0);
@@ -132,6 +171,7 @@ function getSelectedSkin() {
 
 function selectNextSkin() {
   selectedSkinIndex = (selectedSkinIndex + 1) % SHIP_SKINS.length;
+  if (ship) ship.radius = 12 * getSelectedSkin().scale;
   skinNoticeTimer = 2.5;
   try {
     localStorage.setItem(SHIP_SKIN_STORAGE_KEY, getSelectedSkin().id);
@@ -145,6 +185,7 @@ function drawShipHull(lineWidth, speedBoosted = false, tripleShotActive = false)
   ctx.strokeStyle = skin.color;
   ctx.lineWidth = lineWidth;
   ctx.lineJoin = 'round';
+  ctx.scale(skin.scale, skin.scale);
   if (speedBoosted) {
     ctx.shadowColor = '#35d8ff';
     ctx.shadowBlur = 10;
@@ -322,7 +363,7 @@ class Ship {
     this.angle  = -Math.PI / 2;
     this.vx     = 0;
     this.vy     = 0;
-    this.radius = 12;
+    this.radius = 12 * getSelectedSkin().scale;
     this.thrusting     = false;
     this.invincible    = 3;
     this.shootCooldown = 0;
@@ -363,7 +404,7 @@ class Ship {
   tryShoot() {
     if (this.shootCooldown > 0 || this.dead) return [];
     this.shootCooldown = 0.2;
-    const NOSE = 21;
+    const NOSE = 21 * getSelectedSkin().scale;
     const ox = this.x + Math.cos(this.angle) * NOSE;
     const oy = this.y + Math.sin(this.angle) * NOSE;
     if (this.tripleShotTimer > 0) {
@@ -653,7 +694,7 @@ function update(dt) {
       if (!a.dead && !b.dead && dist(b, a) < a.radius) {
         b.dead = true;
         a.dead = true;
-        score += POINTS[a.size];
+        score += POINTS[a.size] * getSelectedSkin().scoreMultiplier;
         explode(a.x, a.y, a.size * 5);
         newAsteroids.push(...a.split());
         const spawnOptions = [];
