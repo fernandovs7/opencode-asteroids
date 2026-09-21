@@ -1,0 +1,136 @@
+name: Triage new issues
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: issue-triage-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Format and label issue
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const issueNumber = context.issue.number;
+            const issue = context.payload.issue;
+
+            const labelDefinitions = {
+              "needs-triage": {
+                color: "FBCA04",
+                description: "Pending initial review and prioritization",
+              },
+              bug: {
+                color: "D73A4A",
+                description: "Something is not working as expected",
+              },
+              documentation: {
+                color: "0075CA",
+                description: "Documentation changes or improvements",
+              },
+              question: {
+                color: "D876E3",
+                description: "Further information or clarification is requested",
+              },
+              enhancement: {
+                color: "A2EEEF",
+                description: "New feature or improvement request",
+              },
+            };
+
+            const normalizedText = `${issue.title}\n${issue.body ?? ""}`
+              .normalize("NFD")
+              .replace(/\p{Diacritic}/gu, "")
+              .toLowerCase();
+
+            const classificationRules = [
+              ["bug", /\b(bug|error|fallo|falla|crash|roto|rota|broken|exception|regresion|regression)\b|no funciona/],
+              ["documentation", /\b(documentacion|documentation|docs?|readme|typo)\b/],
+              ["question", /\?|\b(pregunta|duda|como|how|question)\b/],
+              ["enhancement", /\b(mejora|mejorar|feature|funcionalidad|solicitud|agregar|anadir|implementar|enhancement|request)\b/],
+            ];
+
+            const matchedRule = classificationRules.find(([, pattern]) =>
+              pattern.test(normalizedText),
+            );
+            const labelsToAdd = ["needs-triage"];
+            if (matchedRule) labelsToAdd.push(matchedRule[0]);
+
+            const existingLabels = await github.paginate(
+              github.rest.issues.listLabelsForRepo,
+              { owner, repo, per_page: 100 },
+            );
+            const existingNames = new Set(
+              existingLabels.map((label) => label.name.toLowerCase()),
+            );
+
+            for (const name of labelsToAdd) {
+              if (existingNames.has(name)) continue;
+
+              try {
+                await github.rest.issues.createLabel({
+                  owner,
+                  repo,
+                  name,
+                  ...labelDefinitions[name],
+                });
+              } catch (error) {
+                // Another issue workflow may have created the label concurrently.
+                if (error.status !== 422) throw error;
+              }
+            }
+
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              labels: labelsToAdd,
+            });
+
+            const marker = "<!-- issue-triage-metadata -->";
+            const { data: currentIssue } = await github.rest.issues.get({
+              owner,
+              repo,
+              issue_number: issueNumber,
+            });
+            const currentBody = currentIssue.body ?? "";
+
+            if (!currentBody.includes(marker)) {
+              const separator = currentBody.length === 0
+                ? ""
+                : currentBody.endsWith("\n")
+                  ? "\n"
+                  : "\n\n";
+              const createdAt = new Date(issue.created_at).toISOString();
+              const metadata = `${marker}
+            ---
+            ## Información para revisión
+
+            - **Autor:** @${issue.user.login}
+            - **Creado:** ${createdAt}
+            - **Asociación:** ${issue.author_association}
+            - **Issue:** [${owner}/${repo}#${issueNumber}](${issue.html_url})
+
+            ### Checklist de revisión
+
+            - [ ] Se confirmó que el problema o solicitud se puede reproducir o validar.
+            - [ ] Se definió la prioridad.
+            - [ ] Se evaluaron el alcance y el impacto técnico.
+            - [ ] Se definieron los criterios de aceptación.
+            `;
+
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body: `${currentBody}${separator}${metadata}`,
+              });
+            }
